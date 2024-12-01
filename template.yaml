@@ -1,0 +1,27 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  GoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: main
+      Runtime: provided.al2023
+      Architectures:
+        - arm64
+      CodeUri: .
+      MemorySize: 128
+      Timeout: 5
+      Policies: AWSLambdaBasicExecutionRole
+      Events:
+        HttpApiEvent:
+          Type: HttpApi
+          Properties:
+            Path: /hello
+            Method: GET
+
+Outputs:
+  GoServerless:
+    Description: URL for application
+    Value: !Sub 'https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/'
+    Export:
+      Name: GoServerless
