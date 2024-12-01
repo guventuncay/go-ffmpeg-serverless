@@ -4,6 +4,7 @@ Resources:
   GoFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: GoFunction
       Handler: main
       Runtime: provided.al2023
       Architectures:
