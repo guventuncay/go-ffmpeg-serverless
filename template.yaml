@@ -8,7 +8,7 @@ Resources:
       Runtime: provided.al2023
       Architectures:
         - arm64
-      CodeUri: .
+      CodeUri: deployment.zip
       MemorySize: 128
       Timeout: 5
       Policies: AWSLambdaBasicExecutionRole
