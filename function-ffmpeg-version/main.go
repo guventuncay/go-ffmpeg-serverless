@@ -14,16 +14,11 @@ type Response struct {
 }
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	name := request.QueryStringParameters["name"]
-	if name == "" {
-		name = "World"
-	}
-
 	cmd := exec.Command("./bin/ffmpeg", "-version")
 	output, err := cmd.CombinedOutput()
 
 	response := Response{
-		Message: fmt.Sprintf("Hello, %s!, %s", output),
+		Message: fmt.Sprintf("ffmpeg version:, %s", output),
 	}
 
 	body, err := json.Marshal(response)

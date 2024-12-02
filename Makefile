@@ -1,5 +1,5 @@
 build:
-	GOARCH=arm64 GOOS=linux go build -o main function/main.go
+	GOARCH=arm64 GOOS=linux go build -o main function-video2gif/main.go
 
 zip:
 	zip deployment.zip main bootstrap bin/ffmpeg

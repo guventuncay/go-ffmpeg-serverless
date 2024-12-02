@@ -12,7 +12,15 @@ Resources:
       CodeUri: deployment.zip
       MemorySize: 128
       Timeout: 5
-      Policies: AWSLambdaBasicExecutionRole
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+                - s3:GetObject
+              Resource:
+                - arn:aws:s3:::iamtestingmys3/*
       Events:
         HttpApiEvent:
           Type: HttpApi
