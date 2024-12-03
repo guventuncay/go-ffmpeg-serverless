@@ -1,17 +1,50 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Resources:
-  GoFunction:
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowHeaders:
+          - "*"
+        AllowMethods:
+          - GET
+          - POST
+
+  FfmpegVersionFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: GoFunction
+      FunctionName: FfmpegVersionFunction
       Handler: main
       Runtime: provided.al2023
       Architectures:
         - arm64
-      CodeUri: deployment.zip
+      CodeUri: deployment/ffmpeg-version/deployment.zip
       MemorySize: 128
       Timeout: 5
+      Policies:
+        - AWSLambdaBasicExecutionRole
+      Events:
+        HttpApiEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /ffmpeg-version
+            Method: GET
+
+  Video2GifFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: Video2GifFunction
+      Handler: main
+      Runtime: provided.al2023
+      Architectures:
+        - arm64
+      CodeUri: deployment/video2gif/deployment.zip
+      MemorySize: 128
+      Timeout: 10
       Policies:
         - AWSLambdaBasicExecutionRole
         - Statement:
@@ -25,12 +58,13 @@ Resources:
         HttpApiEvent:
           Type: HttpApi
           Properties:
-            Path: /hello
+            ApiId: !Ref HttpApi
+            Path: /video2gif
             Method: GET
 
 Outputs:
-  GoServerless:
-    Description: URL for application
-    Value: !Sub 'https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/'
+  ApiUrl:
+    Description: Base URL for the API Gateway
+    Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/'
     Export:
-      Name: GoServerless
+      Name: ApiUrl

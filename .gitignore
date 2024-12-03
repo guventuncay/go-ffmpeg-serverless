@@ -108,4 +108,4 @@ go.work.sum
 
 # AWS SAM CLI
 .aws-sam
-deployment.zip
+deployment/
