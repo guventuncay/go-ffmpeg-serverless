@@ -43,8 +43,8 @@ Resources:
       Architectures:
         - arm64
       CodeUri: deployment/video2gif/deployment.zip
-      MemorySize: 128
-      Timeout: 10
+      MemorySize: 1024 #todo optimize Based on bottleneck
+      Timeout: 29
       Policies:
         - AWSLambdaBasicExecutionRole
         - Statement:
@@ -61,6 +61,9 @@ Resources:
             ApiId: !Ref HttpApi
             Path: /video2gif
             Method: GET
+      Environment:
+        Variables:
+          PATH: "/var/task/bin:/usr/bin:/usr/local/bin:/bin"
 
 Outputs:
   ApiUrl:

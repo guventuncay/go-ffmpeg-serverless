@@ -9,9 +9,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	ffmpeg "github.com/u2takey/ffmpeg-go"
+	"io"
 	"log"
-	"strings"
-	"time"
+	"os"
 )
 
 type Response struct {
@@ -23,19 +24,15 @@ var (
 )
 
 func init() {
-	// Initialize the S3 client outside the handler, during the init phase
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
-		log.Fatalf("unable to load SDK config, %v", err)
+		log.Fatalf("unable to load SDK config: %v", err)
 	}
 
 	s3Client = s3.NewFromConfig(cfg)
-	if s3Client == nil {
-		log.Fatalf("Failed to initialize S3 client")
-	}
 }
 
-func getFile(filePath string, bucketName string) (*s3.GetObjectOutput, error) {
+func getFile(filePath string, bucketName string) ([]byte, error) {
 	input := &s3.GetObjectInput{
 		Bucket: aws.String(bucketName),
 		Key:    aws.String(filePath),
@@ -45,19 +42,46 @@ func getFile(filePath string, bucketName string) (*s3.GetObjectOutput, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get file: %w", err)
 	}
+	defer res.Body.Close()
 
-	if res == nil {
-		return nil, fmt.Errorf("received nil response from GetObject")
+	data, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file body: %w", err)
 	}
 
-	return res, nil
+	return data, nil
+}
+
+func convertToGif(video []byte) (string, error) {
+	inputFile := "/tmp/input.mp4"
+	outputFile := "/tmp/output.gif"
+
+	err := os.WriteFile(inputFile, video, 0644)
+	if err != nil {
+		return "", fmt.Errorf("failed to write video to file: %w", err)
+	}
+
+	err = ffmpeg.Input(inputFile, ffmpeg.KwArgs{"ss": "1"}).
+		Output(outputFile, ffmpeg.KwArgs{"s": "320x240", "pix_fmt": "rgb24", "t": "3", "r": "3"}).
+		OverWriteOutput().ErrorToStdOut().Run()
+	if err != nil {
+		return "", fmt.Errorf("failed to convert video to GIF: %w", err)
+	}
+
+	return outputFile, nil
 }
 
 func uploadFile(filePath string, bucketName string) (*s3.PutObjectOutput, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file for upload: %w", err)
+	}
+	defer file.Close()
+
 	input := &s3.PutObjectInput{
 		Bucket: aws.String(bucketName),
-		Key:    aws.String(filePath),
-		Body:   strings.NewReader(time.Now().String()),
+		Key:    aws.String("output.gif"),
+		Body:   file,
 	}
 
 	res, err := s3Client.PutObject(context.TODO(), input)
@@ -65,44 +89,32 @@ func uploadFile(filePath string, bucketName string) (*s3.PutObjectOutput, error)
 		return nil, fmt.Errorf("failed to upload file: %w", err)
 	}
 
-	if res == nil {
-		return nil, fmt.Errorf("received nil response from PutObject")
-	}
-
-	fmt.Printf("%+v\n", res.ResultMetadata)
 	return res, nil
 }
 
 func handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	uploaded, err := uploadFile("something", "iamtestingmys3")
+	videoData, err := getFile("video.mp4", "iamtestingmys3")
 	if err != nil {
-		log.Printf("Error uploading file: %v", err)
-		return events.APIGatewayProxyResponse{StatusCode: 500}, err
+		log.Printf("Error getting video: %v", err)
+		return events.APIGatewayProxyResponse{StatusCode: 500, Body: "Error downloading video"}, err
 	}
 
-	fmt.Printf("%+v\n", uploaded)
-
-	gotFile, err := getFile("something", "iamtestingmys3")
+	gifPath, err := convertToGif(videoData)
 	if err != nil {
-		log.Printf("Error getting file: %v", err)
-		return events.APIGatewayProxyResponse{StatusCode: 500}, err
+		log.Printf("Error converting video: %v", err)
+		return events.APIGatewayProxyResponse{StatusCode: 500, Body: "Error converting video to GIF"}, err
 	}
 
-	fmt.Printf("%+v\n", gotFile)
-
-	response := Response{
-		Message: fmt.Sprintf("Successfully uploaded, metadata: %v", gotFile.Body),
-	}
-
-	body, err := json.Marshal(response)
+	_, err = uploadFile(gifPath, "iamtestingmys3")
 	if err != nil {
-		return events.APIGatewayProxyResponse{StatusCode: 500}, err
+		log.Printf("Error uploading GIF: %v", err)
+		return events.APIGatewayProxyResponse{StatusCode: 500, Body: "Error uploading GIF"}, err
 	}
 
-	return events.APIGatewayProxyResponse{
-		StatusCode: 200,
-		Body:       string(body),
-	}, nil
+	response := Response{Message: "GIF created and uploaded successfully"}
+	body, _ := json.Marshal(response)
+
+	return events.APIGatewayProxyResponse{StatusCode: 200, Body: string(body)}, nil
 }
 
 func main() {
