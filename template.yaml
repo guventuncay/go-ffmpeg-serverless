@@ -43,7 +43,7 @@ Resources:
       Architectures:
         - arm64
       CodeUri: deployment/video2gif/deployment.zip
-      MemorySize: 1024 #todo optimize Based on bottleneck
+      MemorySize: 1024
       Timeout: 29
       Policies:
         - AWSLambdaBasicExecutionRole
